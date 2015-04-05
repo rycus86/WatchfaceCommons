@@ -193,6 +193,12 @@ public abstract class BaseCanvasWatchFaceService extends CanvasWatchFaceService 
         @Override
         public void onTimeTick() {
             super.onTimeTick();
+            currentTime.setToNow();
+
+            for (final Component component : components) {
+                component.onTimeTick(currentTime);
+            }
+
             invalidate();
         }
 

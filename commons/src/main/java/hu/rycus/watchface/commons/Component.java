@@ -59,6 +59,9 @@ public abstract class Component {
         this.visible = visible;
     }
 
+    protected void onTimeTick(final Time time) {
+    }
+
     protected void onDraw(final Canvas canvas, final Time time) { }
 
     protected void onAnimationTick() {
