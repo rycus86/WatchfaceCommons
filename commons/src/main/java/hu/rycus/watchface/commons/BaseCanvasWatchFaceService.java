@@ -88,19 +88,14 @@ public abstract class BaseCanvasWatchFaceService extends CanvasWatchFaceService 
             final boolean visible = isVisible();
             final boolean inAmbientMode = isInAmbientMode();
 
-            boolean needsScheduler = false;
-
             for (final Component component : components) {
                 component.onCreate(visible, inAmbientMode);
                 if (component.needsScheduler()) {
                     component.setScheduler(scheduler);
-                    needsScheduler = true;
                 }
             }
 
-            if (needsScheduler) {
-                scheduler.initialize();
-            }
+            scheduler.initialize();
         }
 
         protected abstract WatchFaceStyle buildStyle(final WatchFaceStyle.Builder builder);
@@ -142,6 +137,12 @@ public abstract class BaseCanvasWatchFaceService extends CanvasWatchFaceService 
 
             for (final Component component : components) {
                 component.onAmbientModeChanged(inAmbientMode);
+            }
+
+            if (inAmbientMode) {
+                scheduler.stopInteractiveTimeUpdater();
+            } else {
+                scheduler.startInteractiveTimeUpdater();
             }
 
             invalidate();

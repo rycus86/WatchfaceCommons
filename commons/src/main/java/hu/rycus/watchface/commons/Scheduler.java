@@ -9,10 +9,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class Scheduler {
 
     private static final String TAG = "Scheduler";
+
+    private static final int MSG_INTERACTIVE_TIME_TICK = 0xFFFF;
 
     private final Map<Integer, List<Component>> registeredComponents = new HashMap<>();
     private final Map<Integer, Long> intervals = new HashMap<>();
@@ -26,10 +29,23 @@ public class Scheduler {
 
     public void initialize() {
         this.handler = new SchedulerHandler(this);
+
+        registerInteractiveTimeUpdater();
+
+        if (!engine.isInAmbientMode()) {
+            startInteractiveTimeUpdater();
+        }
     }
 
     private boolean shouldNotRunHandlerTasks() {
         return !engine.isVisible() || engine.isInAmbientMode();
+    }
+
+    private void registerInteractiveTimeUpdater() {
+        Log.d(TAG, String.format("Register interactive time updater with code %x",
+                MSG_INTERACTIVE_TIME_TICK));
+
+        this.intervals.put(MSG_INTERACTIVE_TIME_TICK, TimeUnit.MINUTES.toMillis(1L));
     }
 
     public void register(final Component component, final int what, final long interval) {
@@ -78,15 +94,27 @@ public class Scheduler {
     }
 
     public void enable() {
+        startInteractiveTimeUpdater();
+
         for (final int what : registeredComponents.keySet()) {
             start(what);
         }
     }
 
     public void disable() {
+        stopInteractiveTimeUpdater();
+
         for (final int what : registeredComponents.keySet()) {
             stop(what);
         }
+    }
+
+    public void startInteractiveTimeUpdater() {
+        start(MSG_INTERACTIVE_TIME_TICK);
+    }
+
+    public void stopInteractiveTimeUpdater() {
+        stop(MSG_INTERACTIVE_TIME_TICK);
     }
 
     private void start(final int what) {
@@ -101,6 +129,10 @@ public class Scheduler {
                 handler.sendEmptyMessageDelayed(what, delay);
             }
         }
+    }
+
+    private static boolean isInteractiveTimeUpdater(final int what) {
+        return what == MSG_INTERACTIVE_TIME_TICK;
     }
 
     private void stop(final int what) {
@@ -125,29 +157,38 @@ public class Scheduler {
 
             final int what = msg.what;
 
-            final List<Component> components = parent.registeredComponents.get(what);
-            if (components == null) {
-                return;
-            }
-
-            boolean hasActiveReceiver = false;
+            boolean shouldScheduleAgain = false;
             boolean shouldInvalidate = false;
 
-            for (final Component component : components) {
-                try {
-                    if (component.isActive() && component.needsScheduler()) {
-                        component.onHandleMessage(what);
+            if (isInteractiveTimeUpdater(what)) {
+                Log.d(TAG, "Sending time tick in interactive mode");
 
-                        hasActiveReceiver = true;
-                        shouldInvalidate |= component.shouldInvalidate();
+                parent.engine.onTimeTick();
+
+                shouldScheduleAgain = true;
+                shouldInvalidate = true;
+            } else {
+                final List<Component> components = parent.registeredComponents.get(what);
+                if (components == null) {
+                    return;
+                }
+
+                for (final Component component : components) {
+                    try {
+                        if (component.isActive() && component.needsScheduler()) {
+                            component.onHandleMessage(what);
+
+                            shouldScheduleAgain = true;
+                            shouldInvalidate |= component.shouldInvalidate();
+                        }
+                    } catch (Exception ex) {
+                        Log.e(TAG, String.format("Failed to handle message %x for %s",
+                                what, component.getClass().getSimpleName()), ex);
                     }
-                } catch (Exception ex) {
-                    Log.e(TAG, String.format("Failed to handle message %x for %s",
-                            what, component.getClass().getSimpleName()), ex);
                 }
             }
 
-            if (hasActiveReceiver) {
+            if (shouldScheduleAgain) {
                 parent.start(what);
             }
 
