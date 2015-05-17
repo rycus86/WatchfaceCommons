@@ -174,6 +174,7 @@ public abstract class BaseCanvasWatchFaceService extends CanvasWatchFaceService 
                 scheduler.enable();
 
                 // update current time in case it changed when the receiver was unregistered
+                // this will also trigger a time tick
                 updateCurrentTimeWithTimeZone(TimeZone.getDefault().getID());
             } else {
                 unregisterBatteryReceiver();
@@ -361,7 +362,7 @@ public abstract class BaseCanvasWatchFaceService extends CanvasWatchFaceService 
 
         private void updateCurrentTimeWithTimeZone(final String timezoneId) {
             currentTime.clear(timezoneId);
-            currentTime.setToNow();
+            onTimeTick();
         }
 
         private void registerTimeZoneChangeReceiver() {

@@ -166,6 +166,9 @@ public class Scheduler {
                 parent.engine.onTimeTick();
 
                 shouldScheduleAgain = true;
+
+                // the onTimeTick should trigger the invalidate
+                // but shouldn't make any harm invoking it again
                 shouldInvalidate = true;
             } else {
                 final List<Component> components = parent.registeredComponents.get(what);
