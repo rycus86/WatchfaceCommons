@@ -12,5 +12,5 @@ maven { url "${System.properties['user.home']}/.m2/repository" }
 
 And finally in the module *dependencies* add:
 ```
-compile 'hu.rycus.watchface:watchface-commons:0.7.0-SNAPSHOT'
+compile 'hu.rycus.watchface:watchface-commons:0.8.0-SNAPSHOT'
 ```
